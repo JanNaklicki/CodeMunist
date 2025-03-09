@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, View } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Button, Input } from "@rneui/themed";
 import { useSession } from "@/contexts/SessionContext";
+import { Redirect } from "expo-router";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -19,7 +20,6 @@ export default function Auth() {
 
     if (error) Alert.alert(error.message);
     setLoading(false);
-    console.log("session", session);
   }
 
   async function signUpWithEmail() {
@@ -36,6 +36,12 @@ export default function Auth() {
     if (!session)
       Alert.alert("Please check your inbox for email verification!");
     setLoading(false);
+
+    <Redirect href="/(tabs)" />;
+  }
+
+  if (session) {
+    return <Redirect href="/(tabs)" />;
   }
 
   return (
