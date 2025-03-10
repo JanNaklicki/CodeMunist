@@ -88,8 +88,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setProfile(null);
     setRole(null);
-    console.log("Logged out");
-    router.replace("/");
+    router.replace("/auth");
   };
 
   const handleSignIn = (session: Session) => {

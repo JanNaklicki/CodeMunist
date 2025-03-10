@@ -1,102 +1,147 @@
-import { Image, StyleSheet, Platform, View } from "react-native";
-
-import { HelloWave } from "@/components/HelloWave";
+import {
+  Image,
+  StyleSheet,
+  Platform,
+  View,
+  Button,
+  TouchableOpacity,
+} from "react-native";
+import {
+  GestureHandlerRootView,
+  PanGestureHandler,
+} from "react-native-gesture-handler";
+import { useEffect, useState } from "react";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
+import ThemedCard from "@/components/main/ThemedCard";
+import CameraDrawer from "@/components/main/CameraDrawer";
+import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import Auth from "@/components/Auth";
+import { ItemsService } from "@/services/items.service";
+import { Tables } from "@/database.types";
+import { parse } from "@babel/core";
+import { useSession } from "@/contexts/SessionContext";
+import { Redirect } from "expo-router";
+import ProtectedRoute from "@/components/ProtectedRoute";
+type Items = Tables<"Items">;
 
 export default function HomeScreen() {
+  const [isCameraDrawerOpen, setCameraDrawerOpen] = useState(false);
+  const [items, setItems] = useState<Items[] | null>(null);
+  const { session, role } = useSession();
+
+  const itemsService = new ItemsService();
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      const data = await itemsService.GetAllItems();
+      setItems(data);
+    };
+    fetchItems();
+  }, []);
+
+  const refetchItems = async () => {
+    const data = await itemsService.GetAllItems();
+    setItems(Array.isArray(data) ? data : []);
+  };
+
+  const handleDelete = async (id: number) => {
+    await itemsService.DeleteItem(id);
+    await refetchItems();
+  };
+
+  const openCameraDrawer = () => {
+    setCameraDrawerOpen(true);
+  };
+
+  const closeCameraDrawer = () => {
+    setCameraDrawerOpen(false);
+  };
+
+  const handleSubmit = async (data: {
+    barcode: string;
+    productName: string;
+  }) => {
+    if (data.barcode === "") {
+      alert("Invalid barcode");
+      return;
+    }
+
+    if (session?.user.id === undefined) {
+      alert("User not found");
+      return;
+    }
+
+    await itemsService.AddItem({
+      id: 0,
+      amount: 0,
+      barcode: data.barcode,
+      name: data.productName,
+      user_id: session?.user.id,
+      created_at: new Date().toISOString().split("T")[0],
+    });
+    const items = await itemsService.GetAllItems();
+    setItems(Array.isArray(items) ? items : null);
+    closeCameraDrawer();
+  };
+
+  if (!session) {
+    return <Redirect href="/auth" />;
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-      headerImage={
-        <Image
-          source={require("@/assets/images/partial-react-logo.png")}
-          style={styles.reactLogo}
-        />
-      }
-    >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit{" "}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText>{" "}
-          to see as. Press{" "}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: "cmd + d",
-              android: "cmd + m",
-              web: "F12",
-            })}
-          </ThemedText>{" "}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this
-          starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{" "}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText>{" "}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{" "}
-          directory. This will move the current{" "}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{" "}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{" "}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText>{" "}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{" "}
-          directory. This will move the current{" "}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{" "}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{" "}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText>{" "}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{" "}
-          directory. This will move the current{" "}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{" "}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{" "}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText>{" "}
-          to get a fresh <ThemedText type="defaultSemiBold">app</ThemedText>{" "}
-          directory. This will move the current{" "}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{" "}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={{ flex: 1, paddingTop: 50 }}>
+        <View style={styles.container}>
+          <View style={styles.titleContainer}>
+            <ThemedText type="title">Items</ThemedText>
+            <ThemedText type="subtitle">Count: {items?.length}</ThemedText>
+          </View>
+          {items?.length === 0 && (
+            <ThemedText type="default">No items found</ThemedText>
+          )}
+          {items?.map((item) => (
+            <ThemedCard item={item} onDelete={handleDelete} key={item.id} />
+          ))}
+          {!isCameraDrawerOpen && (
+            <TouchableOpacity
+              style={styles.scanButton}
+              onPress={openCameraDrawer}
+            >
+              <MaterialIcons name="barcode-reader" size={24} color="white" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+      {isCameraDrawerOpen && (
+        <CameraDrawer onSubmit={handleSubmit} onClose={closeCameraDrawer} />
+      )}
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  scanButton: {
+    backgroundColor: "#000",
+    padding: 20,
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    bottom: 20,
+    alignSelf: "center",
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 20,
+    paddingTop: 20,
+    position: "relative",
+  },
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginVertical: 15,
   },
   stepContainer: {
     gap: 8,

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { supabase } from "../lib/supabase";
-import { Button, Input } from "@rneui/themed";
+import { Input } from "@rneui/themed";
 import { useSession } from "@/contexts/SessionContext";
 import { Redirect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { ThemedView } from "./ThemedView";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -24,28 +26,22 @@ export default function Auth() {
 
   async function signUpWithEmail() {
     setLoading(true);
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: email,
       password: password,
     });
 
     if (error) Alert.alert(error.message);
-    if (!session)
-      Alert.alert("Please check your inbox for email verification!");
+    else Alert.alert("Please check your inbox for email verification!");
     setLoading(false);
-
-    <Redirect href="/(tabs)" />;
   }
 
-  if (session) {
+  if (session.session) {
     return <Redirect href="/(tabs)" />;
   }
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Input
           label="Email"
@@ -68,20 +64,28 @@ export default function Auth() {
         />
       </View>
       <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Button
-          title="Sign in"
+        <TouchableOpacity
+          style={[styles.button, styles.signInButton]}
           disabled={loading}
-          onPress={() => signInWithEmail()}
-        />
+          onPress={signInWithEmail}
+        >
+          <Text style={[styles.buttonText, styles.signInButtonText]}>
+            SIGN IN
+          </Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.verticallySpaced}>
-        <Button
-          title="Sign up"
+        <TouchableOpacity
+          style={[styles.button, styles.signUpButton]}
           disabled={loading}
-          onPress={() => signUpWithEmail()}
-        />
+          onPress={signUpWithEmail}
+        >
+          <Text style={[styles.buttonText, styles.signUpButtonText]}>
+            SIGN UP
+          </Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </ThemedView>
   );
 }
 
@@ -97,5 +101,32 @@ const styles = StyleSheet.create({
   },
   mt20: {
     marginTop: 20,
+  },
+  button: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderRadius: 50,
+  },
+  signInButton: {
+    backgroundColor: "black",
+    borderWidth: 1,
+    borderColor: "black",
+  },
+  signUpButton: {
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "black",
+  },
+  buttonText: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  signInButtonText: {
+    color: "white",
+  },
+  signUpButtonText: {
+    color: "black",
   },
 });
