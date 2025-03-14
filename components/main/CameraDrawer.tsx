@@ -17,16 +17,26 @@ import {
 
 interface CameraDrawerProps {
   onClose: () => void;
-  onSubmit: (data: { barcode: string; productName: string }) => void;
+  onSubmit: (data: {
+    barcode: string;
+    productName: string;
+    priece: string;
+  }) => void;
+  horizontal: boolean;
 }
 
-export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
+export default function CameraDrawer({
+  onClose,
+  onSubmit,
+  horizontal,
+}: CameraDrawerProps) {
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [active, setActive] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [barcode, setBarcode] = useState("");
   const [productName, setProductName] = useState("");
+  const [priece, setPriece] = useState("");
 
   if (!permission) {
     return <View />;
@@ -49,7 +59,10 @@ export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
       );
       const data = await response.json();
-      return data.product?.product_name || "Unknown product";
+      return {
+        name: data.product?.product_name || "Unknown product",
+        priece: data.product?.price || "Unknown price",
+      };
     } catch (error) {
       console.error("Error fetching product:", error);
       return "Unknown product";
@@ -62,7 +75,10 @@ export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
     const barcode = scanningResult.data;
     const productName = await fetchProductName(barcode);
     setBarcode(barcode);
-    setProductName(productName);
+    if (productName !== "Unknown product") {
+      setProductName(productName.name);
+      setPriece(productName.priece);
+    }
     setScanned(true);
   };
 
@@ -72,7 +88,7 @@ export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
   };
 
   const handleAcceptPress = () => {
-    onSubmit({ barcode, productName });
+    onSubmit({ barcode, productName, priece });
     handleClose();
   };
 
@@ -89,7 +105,6 @@ export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
     setProductName("");
   };
 
-  console.log(scanned);
   return (
     <View style={styles.container}>
       <CameraView
@@ -99,10 +114,18 @@ export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
         onBarcodeScanned={active && !scanned ? handleBarcodeScanned : undefined}
       >
         <Animated.View style={[styles.drawer]}>
-          <View style={styles.buttonContainer}>
+          <View
+            style={[
+              styles.buttonContainer,
+              horizontal && styles.horizontalButtons,
+            ]}
+          >
             <View style={styles.emptyColumn} />
             {!scanned ? (
-              <TouchableOpacity style={styles.button} onPress={handleScanPress}>
+              <TouchableOpacity
+                style={[styles.button]}
+                onPress={handleScanPress}
+              >
                 <View style={styles.scanButton}>
                   <MaterialIcons
                     name="barcode-reader"
@@ -121,14 +144,18 @@ export default function CameraDrawer({ onClose, onSubmit }: CameraDrawerProps) {
                 </View>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={scanned ? handleCancelPress : handleClose}
-            >
-              <View style={scanned ? styles.cancelButton : styles.closeButton}>
-                <Ionicons name="close" size={24} color="white" />
-              </View>
-            </TouchableOpacity>
+            {!horizontal && (
+              <TouchableOpacity
+                style={styles.button}
+                onPress={scanned ? handleCancelPress : handleClose}
+              >
+                <View
+                  style={scanned ? styles.cancelButton : styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="white" />
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </Animated.View>
       </CameraView>
@@ -146,17 +173,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingBottom: 10,
   },
-  camera: {
-    flex: 1,
-    borderStartStartRadius: 20,
-    borderTopEndRadius: 20,
-    backgroundColor: "rgb(255, 255, 255)",
-  },
   buttonContainer: {
     flexDirection: "row",
-    backgroundColor: "transparent",
-    justifyContent: "space-between",
-    width: "100%",
+    justifyContent: "space-around",
+    padding: 10,
+  },
+  horizontalButtons: {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  camera: {
+    flex: 1,
+    backgroundColor: "rgb(255, 255, 255)",
   },
   emptyColumn: {
     flex: 1,
@@ -177,9 +206,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    alignItems: "center",
+    alignItems: "flex-end",
   },
   scanButton: {
     padding: 20,
@@ -199,6 +226,6 @@ const styles = StyleSheet.create({
   cancelButton: {
     padding: 20,
     borderRadius: 50,
-    backgroundColor: "rgba(255, 165, 0, 0.82)", // Orange color for cancel button
+    backgroundColor: "rgba(255, 165, 0, 0.82)",
   },
 });

@@ -1,35 +1,56 @@
 import {
-  Image,
-  StyleSheet,
-  Platform,
   View,
-  Button,
   TouchableOpacity,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
-import {
-  GestureHandlerRootView,
-  PanGestureHandler,
-} from "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect, useState } from "react";
-import ParallaxScrollView from "@/components/ParallaxScrollView";
-import ThemedCard from "@/components/main/ThemedCard";
-import CameraDrawer from "@/components/main/CameraDrawer";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { ItemsService } from "@/services/items.service";
 import { Tables } from "@/database.types";
-import { parse } from "@babel/core";
 import { useSession } from "@/contexts/SessionContext";
 import { Redirect } from "expo-router";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import CameraDrawer from "@/components/main/CameraDrawer";
+import ThemedCard from "@/components/main/ThemedCard";
+import * as ScreenOrientation from "expo-screen-orientation";
+import { Accelerometer } from "expo-sensors";
+
 type Items = Tables<"Items">;
 
 export default function HomeScreen() {
   const [isCameraDrawerOpen, setCameraDrawerOpen] = useState(false);
   const [items, setItems] = useState<Items[] | null>(null);
-  const { session, role } = useSession();
-
+  const { session } = useSession();
   const itemsService = new ItemsService();
+  const { width, height } = useWindowDimensions();
+  const [orientation, setOrientation] = useState<number | null>(null);
+  const [shakeDetected, setShakeDetected] = useState(false);
+
+  useEffect(() => {
+    const getOrientation = async () => {
+      const currentOrientation = await ScreenOrientation.getOrientationAsync();
+      setOrientation(currentOrientation);
+    };
+
+    const subscription = ScreenOrientation.addOrientationChangeListener(
+      (event) => {
+        setOrientation(event.orientationInfo.orientation);
+      }
+    );
+
+    getOrientation();
+
+    return () => {
+      ScreenOrientation.removeOrientationChangeListener(subscription);
+    };
+  }, []);
+
+  const isHorizontal =
+    width > height ||
+    orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
+    orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -49,38 +70,31 @@ export default function HomeScreen() {
     await refetchItems();
   };
 
-  const openCameraDrawer = () => {
-    setCameraDrawerOpen(true);
-  };
-
-  const closeCameraDrawer = () => {
-    setCameraDrawerOpen(false);
-  };
+  const openCameraDrawer = () => setCameraDrawerOpen(true);
+  const closeCameraDrawer = () => setCameraDrawerOpen(false);
 
   const handleSubmit = async (data: {
     barcode: string;
     productName: string;
+    priece: string;
   }) => {
-    if (data.barcode === "") {
+    if (!data.barcode) {
       alert("Invalid barcode");
       return;
     }
-
-    if (session?.user.id === undefined) {
+    if (!session?.user.id) {
       alert("User not found");
       return;
     }
-
     await itemsService.AddItem({
       id: 0,
-      amount: 0,
+      amount: data.priece,
       barcode: data.barcode,
       name: data.productName,
-      user_id: session?.user.id,
+      user_id: session.user.id,
       created_at: new Date().toISOString().split("T")[0],
     });
-    const items = await itemsService.GetAllItems();
-    setItems(Array.isArray(items) ? items : null);
+    refetchItems();
     closeCameraDrawer();
   };
 
@@ -88,32 +102,70 @@ export default function HomeScreen() {
     return <Redirect href="/auth" />;
   }
 
+  useEffect(() => {
+    let lastShakeTime = Date.now();
+
+    const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      const acceleration = Math.sqrt(x * x + y * y + z * z);
+      const now = Date.now();
+
+      if (acceleration > 2.0 && now - lastShakeTime > 1000) {
+        lastShakeTime = now;
+        setShakeDetected((prev) => !prev);
+      }
+    });
+
+    Accelerometer.setUpdateInterval(200);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (items) {
+      setItems([...items].reverse());
+    }
+  }, [shakeDetected]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={{ flex: 1, paddingTop: 50 }}>
-        <View style={styles.container}>
-          <View style={styles.titleContainer}>
-            <ThemedText type="title">Items</ThemedText>
-            <ThemedText type="subtitle">Count: {items?.length}</ThemedText>
+      {isHorizontal ? (
+        <CameraDrawer
+          onSubmit={handleSubmit}
+          onClose={closeCameraDrawer}
+          horizontal={isHorizontal}
+        />
+      ) : (
+        <View style={{ flex: 1, paddingTop: 50 }}>
+          <View style={styles.container}>
+            <View style={styles.titleContainer}>
+              <ThemedText type="title">Items</ThemedText>
+              <ThemedText type="subtitle">Count: {items?.length}</ThemedText>
+            </View>
+            {items?.length === 0 && (
+              <ThemedText type="default">No items found</ThemedText>
+            )}
+            {items?.map((item) => (
+              <ThemedCard item={item} onDelete={handleDelete} key={item.id} />
+            ))}
+            {!isCameraDrawerOpen && (
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={openCameraDrawer}
+              >
+                <MaterialIcons name="barcode-reader" size={24} color="white" />
+              </TouchableOpacity>
+            )}
           </View>
-          {items?.length === 0 && (
-            <ThemedText type="default">No items found</ThemedText>
-          )}
-          {items?.map((item) => (
-            <ThemedCard item={item} onDelete={handleDelete} key={item.id} />
-          ))}
-          {!isCameraDrawerOpen && (
-            <TouchableOpacity
-              style={styles.scanButton}
-              onPress={openCameraDrawer}
-            >
-              <MaterialIcons name="barcode-reader" size={24} color="white" />
-            </TouchableOpacity>
+          {isCameraDrawerOpen && (
+            <CameraDrawer
+              onSubmit={handleSubmit}
+              onClose={closeCameraDrawer}
+              horizontal={false}
+            />
           )}
         </View>
-      </View>
-      {isCameraDrawerOpen && (
-        <CameraDrawer onSubmit={handleSubmit} onClose={closeCameraDrawer} />
       )}
     </GestureHandlerRootView>
   );
@@ -142,16 +194,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginVertical: 15,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: "absolute",
   },
 });

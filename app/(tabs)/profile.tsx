@@ -14,8 +14,8 @@ const Profile = () => {
     <ProtectedRoute permission="viewOwnProfile">
       <ThemedView style={styles.container}>
         <Text style={styles.title}>This is you</Text>
-        <Text style={styles.name}>John Doe</Text>
-        <Text style={styles.email}>john.doe@example.com</Text>
+        <Text style={styles.name}>Jan Naklicki</Text>
+        <Text style={styles.email}>janek.naklicki@gmail.com</Text>
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.button} onPress={handleLogout}>
             <Text style={styles.buttonText}>Logout</Text>

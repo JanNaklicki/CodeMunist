@@ -66,7 +66,7 @@ const ThemedCard: React.FC<ThemedCardProps> = ({ item, onDelete }) => {
         {/* <ThemedText type="default">Ammount: {item.amount}</ThemedText> */}
       </View>
       <View style={styles.actionContainer}>
-        <ThemedText type="default">{item.barcode}</ThemedText>
+        <ThemedText type="default">Priece: {item.amount + " zł"}</ThemedText>
         <Ionicons
           name="archive"
           size={24}
